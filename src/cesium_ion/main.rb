@@ -1,8 +1,8 @@
 require 'json'
+require 'net/http'
 require 'rbconfig'
 require 'socket'
-require "net/http"
-require "uri"
+require 'uri'
 
 require 'aws-sdk-s3'
 
