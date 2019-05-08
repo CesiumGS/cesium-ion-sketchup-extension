@@ -97,19 +97,19 @@
     <body onload="initializeFields()">
         <img src="logo.svg" />
         <form>
-            <p>
+            <p title="The name of the model as it will be displayed in your Cesium ion account">
                 <label>Name</label>
                 <input type="text" id="name"/>
             </p>
-            <p>
+            <p title="The description of model as it will be displayed in your Cesium ion account">
                 <label>Description</label>
                 <input type="text" id="description"/>
             </p>
-            <p>
+            <p title="Any attribution that will be sent to clients that request the model">
                 <label>Attribution</label>
                 <input type="text" id="attribution"/>
             </p>
-            <p>
+            <p title="WebP images are typically 25-34% smaller than equivalent JPEG images which leads to faster streaming and reduced data usage. 3D Tiles produced with this option require CesiumJS 1.54 or newer and a browser that supports WebP, such as Chrome or Firefox 65 and newer.">
                 <input type="checkbox" id="webp"/>
                 <label>Use WebP</label>
             </p>
