@@ -219,12 +219,12 @@ module Cesium::IonExporter
 
   def self.show_dialog(modelname, description, attribution, position)
     html_file =  File.join(__dir__, 'dialog.html')
-	  options = {
+    options = {
       :dialog_title => 'Publish to Cesium ion',
       :width => 600,
       :height => 400,
       :style => UI::HtmlDialog::STYLE_DIALOG
-	  }
+    }
     dialog = UI::HtmlDialog.new(options)
     dialog.set_file(html_file)
     dialog.center
@@ -241,7 +241,7 @@ module Cesium::IonExporter
       description = d
       attribution = a
       webP = w
-  		dialog.close
+      dialog.close
     end
 
     dialog.add_action_callback('initializeFields') do |action_context|
