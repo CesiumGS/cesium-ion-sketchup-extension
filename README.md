@@ -9,7 +9,7 @@ Go to https://cesium.com/ion/ and create an account
 
 ### Install Ruby and required modules
 
-Instruction can be found [here](https://www.ruby-lang.org/en/documentation/installation/).
+Instructions can be found [here](https://www.ruby-lang.org/en/documentation/installation/).
 
 #### Install bundler (it may already be installed)
 ```
