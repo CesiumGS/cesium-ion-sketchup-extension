@@ -34,7 +34,7 @@ module Cesium::IonExporter
     :author_attribution => false,
     :texture_maps => true,
     :selectionset_only => false,
-    :preserve_instancing => true
+    :preserve_instancing => false
   }
 
   @tokenFile = "#{Dir.home}/.sketchup_cesium_ion";
@@ -176,45 +176,6 @@ module Cesium::IonExporter
 
   ## END OAUTH2
 
-  ## EXPORT MODEL TO DISK
-
-  def self.recurse_dir(rootDir, base, zio)
-    dir = base.nil? ? rootDir : File.join(rootDir, base)
-
-    Dir.foreach(dir) do |file|
-      next if file == '.' || file == '..'
-      relative = base.nil? ? file : File.join(base, file)
-      absolute = File.join(dir, file)
-
-      if File.file?(absolute)
-        zio.put_next_entry(relative)
-        zio.write File.binread(absolute)
-      else
-        recurse_dir(dir, relative, zio)
-      end
-    end
-  end
-
-  def self.get_model_data(model)
-    Dir.mktmpdir do |dir|
-      modelpath = "#{dir}/model.dae"
-
-      status = model.export(modelpath, @@modelExportOptions)
-
-      unless status
-        return
-      end
-
-      stringio = Zip::OutputStream.write_buffer do |zio|
-        recurse_dir(dir, nil, zio)
-      end
-
-      return stringio.string
-    end
-  end
-
-  ## END EXPORT MODEL TO DISK
-
   ## OPTIONS DIALOG
 
   def self.show_dialog(modelname, description, attribution, position)
@@ -275,6 +236,45 @@ module Cesium::IonExporter
 
   ## END OPTIONS DIALOG
 
+  ## EXPORT MODEL TO DISK
+
+  def self.recurse_dir(rootDir, base, zio)
+    dir = base.nil? ? rootDir : File.join(rootDir, base)
+
+    Dir.foreach(dir) do |file|
+      next if file == '.' || file == '..'
+      relative = base.nil? ? file : File.join(base, file)
+      absolute = File.join(dir, file)
+
+      if File.file?(absolute)
+        zio.put_next_entry(relative)
+        zio.write File.binread(absolute)
+      else
+        recurse_dir(dir, relative, zio)
+      end
+    end
+  end
+
+  def self.get_model_data(model)
+    Dir.mktmpdir do |dir|
+      modelpath = "#{dir}/model.dae"
+
+      status = model.export(modelpath, @@modelExportOptions)
+
+      unless status
+        return
+      end
+
+      stringio = Zip::OutputStream.write_buffer do |zio|
+        recurse_dir(dir, nil, zio)
+      end
+
+      return stringio.string
+    end
+  end
+
+  ## END EXPORT MODEL TO DISK
+
   def self.get_attribution(attrdicts)
     if attrdicts.nil?
       return ''
@@ -295,7 +295,7 @@ module Cesium::IonExporter
     return result
   end
 
-  def self.add_ion_asset(model, compressedModel, token)
+  def self.add_ion_asset(model, token)
     # Figure out best name
     modelname = model.name
     if modelname.nil? || modelname.empty?
@@ -347,12 +347,17 @@ module Cesium::IonExporter
 
     response = http.request(request)
 
-    successfulUpload = false
-    if response.code == '200' && !response.body.nil?
-      resultJson = JSON.parse(response.body)
-      successfulUpload = uploadModel(resultJson['uploadLocation'], compressedModel)
+    if response.code != '200' || response.body.nil?
+      return
     end
 
+    compressedModel = get_model_data(model)
+    if compressedModel.nil?
+      return
+    end
+
+    resultJson = JSON.parse(response.body)
+    successfulUpload = uploadModel(resultJson['uploadLocation'], compressedModel)
     if successfulUpload
       assetMetadata = resultJson['assetMetadata']
       onComplete = resultJson['onComplete']
@@ -408,12 +413,7 @@ module Cesium::IonExporter
       return
     end
 
-    compressedModel = get_model_data(Sketchup.active_model)
-    assetId = nil
-    unless compressedModel.nil?
-      assetId = add_ion_asset(Sketchup.active_model, compressedModel, token)
-    end
-
+    assetId = add_ion_asset(Sketchup.active_model, token)
     if assetId.nil?
       UI.messagebox('Failed to export to Cesium ion', MB_OK)
       return
