@@ -1,16 +1,24 @@
-# ion-sketchup-exporter
+# Cesium ion Sketchup Plugin
 SketchUp extension for uploading and tiling models with Cesium ion.
 
 ## Prerequisites
 
-### Install Ruby
+### Sign up for a Cesium ion account
+
+Go to https://cesium.com/ion/ and create an account
+
+### Install Ruby and required modules
 
 Instruction can be found [here](https://www.ruby-lang.org/en/documentation/installation/).
 
-### Install modules
-
+#### Install bundler (it may already be installed)
 ```
-gem install rubyzip
+gem install bundler
+```
+
+#### Install required modules
+```
+bundler install
 ```
 
 ## Building Plugin
@@ -22,3 +30,21 @@ ruby ./build.rb
 ```
 
 The plugin file will be located at `./build/cesium_ion.rbz`.
+
+## Installing in Sketchup
+
+Under the `Windows` menu, select `Extension Manager`
+
+![Extension Manager](images/ExtensionManager.jpg)
+
+Click `Install Extension`
+
+![Extension Manager](images/FileBrowser.jpg)
+
+Select the `build/cesium.rbz` file you built
+
+![Extension Manager](images/ExtensionManager-2.jpg)
+
+Once it is installed, you can `Publish` from the `Extensions`->`Cesium ion`->`Publish` menu item
+
+![Extension Manager](images/Menu.jpg)

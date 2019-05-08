@@ -97,25 +97,26 @@
     <body onload="initializeFields()">
         <img src="logo.svg" />
         <form>
-            <div>
-                <div><label>Name</label></div>
-                <div><input type="text" id="name"/></div>
-            </div>
-            <div>
-                <div><label>Description</label></div>
-                <div><input type="text" id="description"/></div>
-            </div>
-            <div>
-                <div><label>Attribution</label></div>
-                <div><input type="text" id="attribution"/></div>
-            </div>
-            <div>
-                <div><input type="checkbox" id="webp"/>
-                    <label>Use WebP</label>
-                </div>
-            </div>
-            <button onclick="submitToIon()">Export</button>
-            <button onclick="closeDialog()">Cancel</button>
+            <p>
+                <label>Name</label>
+                <input type="text" id="name"/>
+            </p>
+            <p>
+                <label>Description</label>
+                <input type="text" id="description"/>
+            </p>
+            <p>
+                <label>Attribution</label>
+                <input type="text" id="attribution"/>
+            </p>
+            <p>
+                <input type="checkbox" id="webp"/>
+                <label>Use WebP</label>
+            </p>
+            <p>
+                <button onclick="submitToIon()">Export</button>
+                <button onclick="closeDialog()">Cancel</button>
+            </p>
         </form>
     </body>
 </html>

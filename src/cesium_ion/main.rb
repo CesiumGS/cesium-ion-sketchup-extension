@@ -5,26 +5,7 @@ require 'socket'
 require 'uri'
 
 require 'aws-sdk-s3'
-
-require_relative 'progressbar'
-
-def os
-  @os ||= (
-    host_os = RbConfig::CONFIG['host_os']
-    case host_os
-    when /mswin|msys|mingw|cygwin|bccwin|wince|emc/
-      :windows
-    when /darwin|mac os/
-      :macosx
-    when /linux/
-      :linux
-    when /solaris|bsd/
-      :unix
-    else
-      :unknown
-    end
-  )
-end
+require 'zip'
 
 module Cesium::IonExporter
 
@@ -56,6 +37,8 @@ module Cesium::IonExporter
     :preserve_instancing => true
   }
 
+  @tokenFile = "#{Dir.home}/.sketchup_cesium_ion";
+
   ## OAUTH2
 
   def self.get_http(uri)
@@ -70,17 +53,8 @@ module Cesium::IonExporter
   end
 
   def self.get_token
-    tokenFile = "#{Dir.home}/.sketchup_cesium_ion";
-    if File.exist?(tokenFile)
-      return File.read(tokenFile)
-    end
-
-    if os == :windows
-      command = 'start'
-      amp = '^&'
-    else
-      command = 'open'
-      amp = '\&'
+    if File.exist?(@tokenFile)
+      return File.read(@tokenFile)
     end
 
     state = [*('a'..'z'),*('0'..'9')].shuffle[0,8].join
@@ -94,12 +68,11 @@ module Cesium::IonExporter
 
     querystring = '';
     query.each do |key, value|
-      querystring += (querystring.length == 0) ? '?' : amp
+      querystring += (querystring.length == 0) ? '?' : '&'
       querystring += "#{key}=#{value}"
     end
 
-    authorizeUrl = "#{@@baseServer}ion/oauth#{querystring}"
-    system("#{command} #{authorizeUrl}")
+    UI.openURL("#{@@baseServer}ion/oauth#{querystring}")
 
     # Start a TCP server and block waiting for a single request
     params = {}
@@ -195,7 +168,7 @@ module Cesium::IonExporter
     if response.code == '200' && !response.body.nil?
       resultJson = JSON.parse(response.body)
 
-      File.write(tokenFile, resultJson['access_token'])
+      File.write(@tokenFile, resultJson['access_token'])
     end
 
     return resultJson['access_token']
@@ -205,7 +178,7 @@ module Cesium::IonExporter
 
   ## EXPORT MODEL TO DISK
 
-  def self.recurse_dir(rootDir, base, modeldata)
+  def self.recurse_dir(rootDir, base, zio)
     dir = base.nil? ? rootDir : File.join(rootDir, base)
 
     Dir.foreach(dir) do |file|
@@ -214,9 +187,10 @@ module Cesium::IonExporter
       absolute = File.join(dir, file)
 
       if File.file?(absolute)
-        modeldata[relative] = File.binread(absolute)
+        zio.put_next_entry(relative)
+        zio.write File.binread(absolute)
       else
-        recurse_dir(dir, relative, modeldata)
+        recurse_dir(dir, relative, zio)
       end
     end
   end
@@ -228,13 +202,14 @@ module Cesium::IonExporter
       status = model.export(modelpath, @@modelExportOptions)
 
       unless status
-        yield
+        return
       end
 
-      modeldata = {}
-      recurse_dir(dir, nil, modeldata)
+      stringio = Zip::OutputStream.write_buffer do |zio|
+        recurse_dir(dir, nil, zio)
+      end
 
-      yield modeldata
+      return stringio.string
     end
   end
 
@@ -245,9 +220,9 @@ module Cesium::IonExporter
   def self.show_dialog(modelname, description, attribution, position)
     html_file =  File.join(__dir__, 'dialog.html')
 	  options = {
-      :dialog_title => 'Export to Cesium ion',
-      :width => 500,
-      :height => 350,
+      :dialog_title => 'Publish to Cesium ion',
+      :width => 600,
+      :height => 400,
       :style => UI::HtmlDialog::STYLE_DIALOG
 	  }
     dialog = UI::HtmlDialog.new(options)
@@ -307,7 +282,7 @@ module Cesium::IonExporter
 
     result = ''
     attrdicts.each do | dict |
-      if !dict['NicknamesKey'].nil?
+      unless dict['NicknamesKey'].nil?
         dict['NicknamesKey'].each do | name |
           if result.length > 0
             result += ', '
@@ -320,7 +295,7 @@ module Cesium::IonExporter
     return result
   end
 
-  def self.add_ion_asset(model, modeldata, token)
+  def self.add_ion_asset(model, compressedModel, token)
     # Figure out best name
     modelname = model.name
     if modelname.nil? || modelname.empty?
@@ -360,7 +335,7 @@ module Cesium::IonExporter
 
     # Check if user cancelled the export
     if options.nil?
-      return
+      return -1
     end
 
     uri = URI.parse("#{@@apiServer}v1/assets?access_token=#{token}")
@@ -375,7 +350,7 @@ module Cesium::IonExporter
     successfulUpload = false
     if response.code == '200' && !response.body.nil?
       resultJson = JSON.parse(response.body)
-      successfulUpload = uploadModel(resultJson['uploadLocation'], modeldata)
+      successfulUpload = uploadModel(resultJson['uploadLocation'], compressedModel)
     end
 
     if successfulUpload
@@ -394,7 +369,7 @@ module Cesium::IonExporter
     end
   end
 
-  def self.uploadModel(uploadInfo, modeldata)
+  def self.uploadModel(uploadInfo, compressedModel)
     options = {
       :region => 'us-east-1',
       :credentials => Aws::Credentials.new(
@@ -404,25 +379,23 @@ module Cesium::IonExporter
       :force_path_style => true
     }
 
-    if !uploadInfo['endpoint'].nil?
+    unless uploadInfo['endpoint'].nil?
       options[:endpoint] = uploadInfo['endpoint']
     end
 
     s3 = Aws::S3::Client.new(options)
 
-    modeldata.each do |key, value|
-      begin
-        resp = s3.put_object({
-          body: value,
-          bucket: uploadInfo['bucket'],
-          key: "#{uploadInfo['prefix']}#{key}"
-        })
-      rescue Exception => e
-        if @@debug
-          puts e
-        end
-        return false
+    begin
+      resp = s3.put_object({
+        body: compressedModel,
+        bucket: uploadInfo['bucket'],
+        key: "#{uploadInfo['prefix']}model.zip"
+      })
+    rescue Exception => e
+      if @@debug
+        puts e
       end
+      return false
     end
 
     return true
@@ -431,59 +404,45 @@ module Cesium::IonExporter
   def self.export_model
     token = get_token()
     if token.nil?
-      notification = UI::Notification.new(EXTENSION, 'Could not access Cesium ion account')
-      notification.show
+      UI.messagebox('Could not access Cesium ion account', MB_OK)
       return
     end
 
-    get_model_data(Sketchup.active_model) do |modeldata|
-      assetId = nil
-      if !modeldata.nil?
-        assetId = add_ion_asset(Sketchup.active_model, modeldata, token)
-      end
+    compressedModel = get_model_data(Sketchup.active_model)
+    assetId = nil
+    unless compressedModel.nil?
+      assetId = add_ion_asset(Sketchup.active_model, compressedModel, token)
+    end
 
-      if assetId.nil?
-        notification = UI::Notification.new(EXTENSION, 'Failed to export to Cesium ion')
-        notification.show
-        return
-      end
+    if assetId.nil?
+      UI.messagebox('Failed to export to Cesium ion', MB_OK)
+      return
+    elsif assetId == -1
+      return # Cancelled by user
+    end
 
-      pb = ProgressBar.new(100, 'Tiling with Cesium ion')
+    # Upload succeeded
+    notification = UI::Notification.new(EXTENSION, "Successfully uploaded model to Cesium ion as asset #{assetId}")
+    notification.show
+    UI.openURL("#{@@baseServer}ion/assets/#{assetId}");
+  end
 
-      progressUri = URI.parse("#{@@apiServer}v1/assets/#{assetId}?access_token=#{token}")
-      progressHttp = get_http(progressUri)
-
-      timer_id = UI.start_timer(1, true) do
-        progressResponse = progressHttp.request(Net::HTTP::Get.new(progressUri.request_uri))
-        if progressResponse.code == '200' && !progressResponse.body.nil?
-          resultJson = JSON.parse(progressResponse.body)
-          if resultJson['status'].include? 'ERROR'
-            timer_id = UI.stop_timer(timer_id)
-
-            notification = UI::Notification.new(EXTENSION, 'Failed to export to Cesium ion')
-            notification.show
-          elsif resultJson['status'] == 'COMPLETE'
-            pb.update(resultJson['percentComplete'])
-            timer_id = UI.stop_timer(timer_id)
-
-            notification = UI::Notification.new(EXTENSION, "Successfully exported asset #{assetId} to Cesium ion")
-            notification.show
-          else
-            pb.update(resultJson['percentComplete'])
-          end
-        else
-          timer_id = UI.stop_timer(timer_id)
-          notification = UI::Notification.new(EXTENSION, 'Couldn\'t retrieve asset status')
-          notification.show
-        end
-      end
+  def self.logout
+    result = UI.messagebox('Are you sure you want to log out of Cesium ion?', MB_YESNO)
+    if result == IDYES
+      File.delete(@tokenFile)
     end
   end
 
   unless(file_loaded?(__FILE__))
     file_loaded(__FILE__)
     menu = UI.menu("Plugins")
-    menu.add_item(EXTENSION.name) { export_model }
-  end
+    cesiumMenu = menu.add_submenu(EXTENSION.name)
+    cesiumMenu.add_item('Publish') { export_model }
+    logOutItem = cesiumMenu.add_item('Log out') { logout }
 
+    cesiumMenu.set_validation_proc(logOutItem) do
+      File.exist?(@tokenFile) ? MF_ENABLED : MF_GRAYED
+    end
+  end
 end
