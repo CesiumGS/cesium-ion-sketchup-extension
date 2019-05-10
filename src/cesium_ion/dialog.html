@@ -1,0 +1,122 @@
+<html>
+    <head>
+        <title>Export to Cesium ion</title>
+        <script>
+            function initializeFields() {
+                sketchup.initializeFields();
+            }
+
+            function submitToIon() {
+                sketchup.export(document.getElementById('name').value,
+                        document.getElementById('description').value,
+                        document.getElementById('attribution').value,
+                        document.getElementById('webp').checked);
+            }
+
+            function closeDialog() {
+                sketchup.close();
+            }
+        </script>
+
+        <style>
+            body {
+                font-family: "Lato", Arial, Helvetica, sans-serif;
+                font-size: 14px;
+                line-height: 1.35;
+                color: #404040;
+                background-color: #e6ebee;
+            }
+
+            button {
+                color: #fff;
+                background-color: #2B87C4;
+                border-color: #226a9a;
+                margin-right: 3px;
+                display: inline-block;
+                margin-bottom: 0;
+                font-weight: normal;
+                text-align: center;
+                white-space: nowrap;
+                vertical-align: middle;
+                touch-action: manipulation;
+                cursor: pointer;
+                background-image: none;
+                border: 1px solid transparent;
+                padding: 6px 12px;
+                font-size: 14px;
+                line-height: 1.35;
+                border-radius: 5px;
+            }
+
+            label {
+                font-family: "Open Sans", Verdana, Geneva, sans-serif;
+                display: inline-block;
+                max-width: 100%;
+                margin-bottom: 5px;
+                font-weight: 700;
+                box-sizing: border-box;
+                font-size: 14px;
+                line-height: 1.35;
+                color: #404040;
+            }
+
+            input[type=text] {
+                width: 100%;
+                height: 32px;
+                padding: 6px 12px;
+                font-size: 14px;
+                line-height: 1.35;
+                color: #404040;
+                background-color: #fff;
+                background-image: none;
+                border: 1px solid #bababa;
+                border-radius: 5px;
+                box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.075);
+                transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+                margin: 0;
+                box-sizing: border-box;
+            }
+
+            input[type=checkbox] {
+                font-size: 14px;
+                color: #404040;
+                margin: 0;
+                box-sizing: border-box;
+            }
+
+            img {
+                height: 40px;
+                display: block;
+                vertical-align: middle;
+                border: 0;
+                box-sizing: border-box;
+                color: #2B87C4;
+            }
+        </style>
+    </head>
+    <body onload="initializeFields()">
+        <img src="logo.svg" />
+        <form>
+            <p title="The name of the model as it will be displayed in your Cesium ion account">
+                <label>Name</label>
+                <input type="text" id="name"/>
+            </p>
+            <p title="The description of model as it will be displayed in your Cesium ion account">
+                <label>Description</label>
+                <input type="text" id="description"/>
+            </p>
+            <p title="Any attribution that will be sent to clients that request the model">
+                <label>Attribution</label>
+                <input type="text" id="attribution"/>
+            </p>
+            <p title="WebP images are typically 25-34% smaller than equivalent JPEG images which leads to faster streaming and reduced data usage. 3D Tiles produced with this option require CesiumJS 1.54 or newer and a browser that supports WebP, such as Chrome or Firefox 65 and newer.">
+                <input type="checkbox" id="webp"/>
+                <label>Use WebP</label>
+            </p>
+            <p>
+                <button onclick="submitToIon()">Export</button>
+                <button onclick="closeDialog()">Cancel</button>
+            </p>
+        </form>
+    </body>
+</html>
