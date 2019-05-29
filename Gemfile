@@ -1,5 +1,10 @@
 source 'https://rubygems.org'
 
-group :development do
-  gem 'rubyzip'
-end
+gem 'aws-eventstream'
+gem 'aws-partitions'
+gem 'aws-sigv4'
+gem 'aws-sdk-core'
+gem 'aws-sdk-kms'
+gem 'aws-sdk-s3'
+gem 'jmespath'
+gem 'rubyzip'
