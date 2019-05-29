@@ -2,6 +2,8 @@ require 'stringio'
 require 'tempfile'
 require 'zlib'
 
+module Cesium::IonExporter
+
 module Aws
   module EventStream 
 
@@ -634,3 +636,5 @@ end
 # KG-dev::RubyPacker replaced for aws-eventstream/header_value.rb
 # KG-dev::RubyPacker replaced for aws-eventstream/types.rb
 # KG-dev::RubyPacker replaced for aws-eventstream/errors.rb
+
+end # Cesium::IonExporter

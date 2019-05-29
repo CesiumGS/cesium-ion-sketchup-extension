@@ -1,6 +1,8 @@
 require 'set'
 require 'json'
 
+module Cesium::IonExporter
+
 module Aws
   module Partitions
     # @api private
@@ -815,3 +817,5 @@ module Aws
     end
   end
 end
+
+end # Cesium::IonExporter

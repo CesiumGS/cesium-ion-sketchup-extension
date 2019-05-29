@@ -8,6 +8,8 @@
 require_relative 'aws-sdk-core'
 require_relative 'aws-sigv4'
 
+module Cesium::IonExporter
+
 module Aws::KMS
   module Types
 
@@ -9349,3 +9351,5 @@ module Aws::KMS
   GEM_VERSION = '1.21.0'
 
 end
+
+end # Cesium::IonExporter

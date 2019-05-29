@@ -22,6 +22,8 @@ require_relative 'aws-sigv4'
 require_relative 'aws-sdk-core'
 require_relative 'aws-sdk-kms'
 
+module Cesium::IonExporter
+
 module Aws::S3
   module Types
 
@@ -33084,3 +33086,5 @@ module Aws::S3
   GEM_VERSION = '1.40.0'
 
 end
+
+end # Cesium::IonExporter

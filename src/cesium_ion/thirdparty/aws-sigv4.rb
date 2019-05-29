@@ -7,6 +7,8 @@ require 'cgi'
 
 require_relative 'aws-eventstream'
 
+module Cesium::IonExporter
+
 module Aws
   module Sigv4
     # Users that wish to configure static credentials can use the
@@ -815,3 +817,5 @@ end
 # KG-dev::RubyPacker replaced for aws-sigv4/errors.rb
 # KG-dev::RubyPacker replaced for aws-sigv4/signature.rb
 # KG-dev::RubyPacker replaced for aws-sigv4/signer.rb
+
+end # Cesium::IonExporter

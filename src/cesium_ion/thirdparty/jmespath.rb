@@ -1,5 +1,7 @@
 require 'thread'
 
+module Cesium::IonExporter
+
 module JMESPath
   class CachingParser
 
@@ -2455,3 +2457,5 @@ module JMESPath
 
   end
 end
+
+end # Cesium::IonExporter

@@ -6,6 +6,8 @@ require_relative 'aws-partitions'
 require_relative 'aws-sigv4'
 require_relative 'jmespath'
 
+module Cesium::IonExporter
+
 module Seahorse
   # @api private
   module Util
@@ -16635,3 +16637,5 @@ module Aws
 
   end
 end
+
+end # Cesium::IonExporter

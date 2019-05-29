@@ -1,3 +1,15 @@
+require 'pathname'
+require 'delegate'
+require 'fileutils'
+require 'rbconfig'
+require 'singleton'
+require 'stringio'
+require 'tempfile'
+require 'tmpdir'
+require 'zlib'
+
+module Cesium::IonExporter
+
 module Zip
   class DOSTime < Time #:nodoc:all
     # MS-DOS File Date and Time format as used in Interrupt 21H Function 57H:
@@ -236,7 +248,7 @@ module Zip
     end
   end
 end
-require 'pathname'
+
 module Zip
   class Entry
     STORED   = 0
@@ -258,7 +270,7 @@ module Zip
       @local_header_size        = nil # not known until local entry is created or read
       @internal_file_attributes = 1
       @external_file_attributes = 0
-      @header_signature         = ::Zip::CENTRAL_DIRECTORY_ENTRY_SIGNATURE
+      @header_signature         = Cesium::IonExporter::Zip::CENTRAL_DIRECTORY_ENTRY_SIGNATURE
 
       @version_needed_to_extract = VERSION_NEEDED_TO_EXTRACT
       @version                   = VERSION_MADE_BY
@@ -266,7 +278,7 @@ module Zip
       @ftype           = nil          # unspecified or unknown
       @filepath        = nil
       @gp_flags        = 0
-      if ::Zip.unicode_names
+      if Cesium::IonExporter::Zip.unicode_names
         @gp_flags |= EFS
         @version = 63
       end
@@ -286,7 +298,7 @@ module Zip
 
     def check_name(name)
       return unless name.start_with?('/')
-      raise ::Zip::EntryNameError, "Illegal ZipEntry name '#{name}', name must not start with /"
+      raise Cesium::IonExporter::Zip::EntryNameError, "Illegal ZipEntry name '#{name}', name must not start with /"
     end
 
     def initialize(*args)
@@ -294,7 +306,7 @@ module Zip
       check_name(name)
 
       set_default_vars_values
-      @fstype = ::Zip::RUNNING_ON_WINDOWS ? ::Zip::FSTYPE_FAT : ::Zip::FSTYPE_UNIX
+      @fstype = Cesium::IonExporter::Zip::RUNNING_ON_WINDOWS ? Cesium::IonExporter::Zip::FSTYPE_FAT : Cesium::IonExporter::Zip::FSTYPE_UNIX
 
       @zipfile            = args[0] || ''
       @name               = name
@@ -302,12 +314,12 @@ module Zip
       @extra              = args[3] || ''
       @compressed_size    = args[4] || 0
       @crc                = args[5] || 0
-      @compression_method = args[6] || ::Zip::Entry::DEFLATED
+      @compression_method = args[6] || Cesium::IonExporter::Zip::Entry::DEFLATED
       @size               = args[7] || 0
-      @time               = args[8] || ::Zip::DOSTime.now
+      @time               = args[8] || Cesium::IonExporter::Zip::DOSTime.now
 
       @ftype = name_is_directory? ? :directory : :file
-      @extra = ::Zip::ExtraField.new(@extra.to_s) unless @extra.is_a?(::Zip::ExtraField)
+      @extra = Cesium::IonExporter::Zip::ExtraField.new(@extra.to_s) unless @extra.is_a?(Cesium::IonExporter::Zip::ExtraField)
     end
 
     def time
@@ -406,7 +418,7 @@ module Zip
       end
 
       dest_path ||= @name
-      block ||= proc { ::Zip.on_exists_proc }
+      block ||= proc { Cesium::IonExporter::Zip.on_exists_proc }
 
       if directory? || file? || symlink?
         __send__("create_#{@ftype}", dest_path, &block)
@@ -476,16 +488,16 @@ module Zip
     def read_local_entry(io) #:nodoc:all
       @local_header_offset = io.tell
 
-      static_sized_fields_buf = io.read(::Zip::LOCAL_ENTRY_STATIC_HEADER_LENGTH) || ''
+      static_sized_fields_buf = io.read(Cesium::IonExporter::Zip::LOCAL_ENTRY_STATIC_HEADER_LENGTH) || ''
 
-      unless static_sized_fields_buf.bytesize == ::Zip::LOCAL_ENTRY_STATIC_HEADER_LENGTH
+      unless static_sized_fields_buf.bytesize == Cesium::IonExporter::Zip::LOCAL_ENTRY_STATIC_HEADER_LENGTH
         raise Error, 'Premature end of file. Not enough data for zip entry local header'
       end
 
       unpack_local_entry(static_sized_fields_buf)
 
-      unless @header_signature == ::Zip::LOCAL_ENTRY_SIGNATURE
-        raise ::Zip::Error, "Zip local header magic not found at location '#{local_header_offset}'"
+      unless @header_signature == Cesium::IonExporter::Zip::LOCAL_ENTRY_SIGNATURE
+        raise Cesium::IonExporter::Zip::Error, "Zip local header magic not found at location '#{local_header_offset}'"
       end
       set_time(@last_mod_date, @last_mod_time)
 
@@ -493,17 +505,17 @@ module Zip
       extra = io.read(@extra_length)
 
       @name.tr!('\\', '/')
-      if ::Zip.force_entry_names_encoding
-        @name.force_encoding(::Zip.force_entry_names_encoding)
+      if Cesium::IonExporter::Zip.force_entry_names_encoding
+        @name.force_encoding(Cesium::IonExporter::Zip.force_entry_names_encoding)
       end
 
       if extra && extra.bytesize != @extra_length
-        raise ::Zip::Error, 'Truncated local zip entry header'
+        raise Cesium::IonExporter::Zip::Error, 'Truncated local zip entry header'
       else
-        if @extra.is_a?(::Zip::ExtraField)
+        if @extra.is_a?(Cesium::IonExporter::Zip::ExtraField)
           @extra.merge(extra) if extra
         else
-          @extra = ::Zip::ExtraField.new(extra)
+          @extra = Cesium::IonExporter::Zip::ExtraField.new(extra)
         end
       end
       parse_zip64_extra(true)
@@ -512,7 +524,7 @@ module Zip
 
     def pack_local_entry
       zip64 = @extra['Zip64']
-      [::Zip::LOCAL_ENTRY_SIGNATURE,
+      [Cesium::IonExporter::Zip::LOCAL_ENTRY_SIGNATURE,
        @version_needed_to_extract, # version needed to extract
        @gp_flags, # @gp_flags
        @compression_method,
@@ -563,14 +575,14 @@ module Zip
 
     def set_ftype_from_c_dir_entry
       @ftype = case @fstype
-               when ::Zip::FSTYPE_UNIX
+               when Cesium::IonExporter::Zip::FSTYPE_UNIX
                  @unix_perms = (@external_file_attributes >> 16) & 0o7777
                  case (@external_file_attributes >> 28)
-                 when ::Zip::FILE_TYPE_DIR
+                 when Cesium::IonExporter::Zip::FILE_TYPE_DIR
                    :directory
-                 when ::Zip::FILE_TYPE_FILE
+                 when Cesium::IonExporter::Zip::FILE_TYPE_FILE
                    :file
-                 when ::Zip::FILE_TYPE_SYMLINK
+                 when Cesium::IonExporter::Zip::FILE_TYPE_SYMLINK
                    :symlink
                  else
                    # best case guess for whether it is a file or not
@@ -591,37 +603,37 @@ module Zip
     end
 
     def check_c_dir_entry_static_header_length(buf)
-      return if buf.bytesize == ::Zip::CDIR_ENTRY_STATIC_HEADER_LENGTH
+      return if buf.bytesize == Cesium::IonExporter::Zip::CDIR_ENTRY_STATIC_HEADER_LENGTH
       raise Error, 'Premature end of file. Not enough data for zip cdir entry header'
     end
 
     def check_c_dir_entry_signature
-      return if header_signature == ::Zip::CENTRAL_DIRECTORY_ENTRY_SIGNATURE
+      return if header_signature == Cesium::IonExporter::Zip::CENTRAL_DIRECTORY_ENTRY_SIGNATURE
       raise Error, "Zip local header magic not found at location '#{local_header_offset}'"
     end
 
     def check_c_dir_entry_comment_size
       return if @comment && @comment.bytesize == @comment_length
-      raise ::Zip::Error, 'Truncated cdir zip entry header'
+      raise Cesium::IonExporter::Zip::Error, 'Truncated cdir zip entry header'
     end
 
     def read_c_dir_extra_field(io)
-      if @extra.is_a?(::Zip::ExtraField)
+      if @extra.is_a?(Cesium::IonExporter::Zip::ExtraField)
         @extra.merge(io.read(@extra_length))
       else
-        @extra = ::Zip::ExtraField.new(io.read(@extra_length))
+        @extra = Cesium::IonExporter::Zip::ExtraField.new(io.read(@extra_length))
       end
     end
 
     def read_c_dir_entry(io) #:nodoc:all
-      static_sized_fields_buf = io.read(::Zip::CDIR_ENTRY_STATIC_HEADER_LENGTH)
+      static_sized_fields_buf = io.read(Cesium::IonExporter::Zip::CDIR_ENTRY_STATIC_HEADER_LENGTH)
       check_c_dir_entry_static_header_length(static_sized_fields_buf)
       unpack_c_dir_entry(static_sized_fields_buf)
       check_c_dir_entry_signature
       set_time(@last_mod_date, @last_mod_time)
       @name = io.read(@name_length)
-      if ::Zip.force_entry_names_encoding
-        @name.force_encoding(::Zip.force_entry_names_encoding)
+      if Cesium::IonExporter::Zip.force_entry_names_encoding
+        @name.force_encoding(Cesium::IonExporter::Zip.force_entry_names_encoding)
       end
       read_c_dir_extra_field(io)
       @comment = io.read(@comment_length)
@@ -660,7 +672,7 @@ module Zip
       return unless file? || directory?
 
       case @fstype
-      when ::Zip::FSTYPE_UNIX
+      when Cesium::IonExporter::Zip::FSTYPE_UNIX
         set_unix_permissions_on_path(dest_path)
       end
     end
@@ -695,17 +707,17 @@ module Zip
     def write_c_dir_entry(io) #:nodoc:all
       prep_zip64_extra(false)
       case @fstype
-      when ::Zip::FSTYPE_UNIX
+      when Cesium::IonExporter::Zip::FSTYPE_UNIX
         ft = case @ftype
              when :file
                @unix_perms ||= 0o644
-               ::Zip::FILE_TYPE_FILE
+               Cesium::IonExporter::Zip::FILE_TYPE_FILE
              when :directory
                @unix_perms ||= 0o755
-               ::Zip::FILE_TYPE_DIR
+               Cesium::IonExporter::Zip::FILE_TYPE_DIR
              when :symlink
                @unix_perms ||= 0o755
-               ::Zip::FILE_TYPE_SYMLINK
+               Cesium::IonExporter::Zip::FILE_TYPE_SYMLINK
              end
 
         unless ft.nil?
@@ -737,8 +749,8 @@ module Zip
     # Warning: may behave weird with symlinks.
     def get_input_stream(&block)
       if @ftype == :directory
-        yield ::Zip::NullInputStream if block_given?
-        ::Zip::NullInputStream
+        yield Cesium::IonExporter::Zip::NullInputStream if block_given?
+        Cesium::IonExporter::Zip::NullInputStream
       elsif @filepath
         case @ftype
         when :file
@@ -752,7 +764,7 @@ module Zip
           raise "unknown @file_type #{@ftype}"
         end
       else
-        zis = ::Zip::InputStream.new(@zipfile, local_header_offset)
+        zis = Cesium::IonExporter::Zip::InputStream.new(@zipfile, local_header_offset)
         zis.instance_variable_set(:@complete_entry, self)
         zis.get_next_entry
         if block_given?
@@ -797,10 +809,10 @@ module Zip
 
     def write_to_zip_output_stream(zip_output_stream) #:nodoc:all
       if @ftype == :directory
-        zip_output_stream.put_next_entry(self, nil, nil, ::Zip::Entry::STORED)
+        zip_output_stream.put_next_entry(self, nil, nil, Cesium::IonExporter::Zip::Entry::STORED)
       elsif @filepath
-        zip_output_stream.put_next_entry(self, nil, nil, compression_method || ::Zip::Entry::DEFLATED)
-        get_input_stream { |is| ::Zip::IOExtras.copy_stream(zip_output_stream, is) }
+        zip_output_stream.put_next_entry(self, nil, nil, compression_method || Cesium::IonExporter::Zip::Entry::DEFLATED)
+        get_input_stream { |is| Cesium::IonExporter::Zip::IOExtras.copy_stream(zip_output_stream, is) }
       else
         zip_output_stream.copy_raw_entry(self)
       end
@@ -827,14 +839,14 @@ module Zip
     private
 
     def set_time(binary_dos_date, binary_dos_time)
-      @time = ::Zip::DOSTime.parse_binary_dos_format(binary_dos_date, binary_dos_time)
+      @time = Cesium::IonExporter::Zip::DOSTime.parse_binary_dos_format(binary_dos_date, binary_dos_time)
     rescue ArgumentError
-      warn 'Invalid date/time in zip entry' if ::Zip.warn_invalid_date
+      warn 'Invalid date/time in zip entry' if Cesium::IonExporter::Zip.warn_invalid_date
     end
 
     def create_file(dest_path, _continue_on_exists_proc = proc { Zip.continue_on_exists_proc })
       if ::File.exist?(dest_path) && !yield(self, dest_path)
-        raise ::Zip::DestinationFileExistsError,
+        raise Cesium::IonExporter::Zip::DestinationFileExistsError,
               "Destination '#{dest_path}' already exists"
       end
       ::File.open(dest_path, 'wb') do |os|
@@ -842,7 +854,7 @@ module Zip
           set_extra_attributes_on_path(dest_path)
 
           buf = ''.dup
-          while (buf = is.sysread(::Zip::Decompressor::CHUNK_SIZE, buf))
+          while (buf = is.sysread(Cesium::IonExporter::Zip::Decompressor::CHUNK_SIZE, buf))
             os << buf
           end
         end
@@ -855,7 +867,7 @@ module Zip
         if block_given? && yield(self, dest_path)
           ::FileUtils.rm_f dest_path
         else
-          raise ::Zip::DestinationFileExistsError,
+          raise Cesium::IonExporter::Zip::DestinationFileExistsError,
                 "Cannot create directory '#{dest_path}'. " \
                     'A file already exists with that name'
         end
@@ -888,7 +900,7 @@ module Zip
 
     # create a zip64 extra information field if we need one
     def prep_zip64_extra(for_local_header) #:nodoc:all
-      return unless ::Zip.write_zip64_support
+      return unless Cesium::IonExporter::Zip.write_zip64_support
       need_zip64 = @size >= 0xFFFFFFFF || @compressed_size >= 0xFFFFFFFF
       need_zip64 ||= @local_header_offset >= 0xFFFFFFFF unless for_local_header
       if need_zip64
@@ -1029,7 +1041,7 @@ module Zip
   class ExtraField::Generic
     def self.register_map
       if const_defined?(:HEADER_ID)
-        ::Zip::ExtraField::ID_MAP[const_get(:HEADER_ID)] = self
+        Cesium::IonExporter::Zip::ExtraField::ID_MAP[const_get(:HEADER_ID)] = self
       end
     end
 
@@ -1089,9 +1101,9 @@ module Zip
       size, content = initial_parse(binstr)
       size || return
       @flag, mtime, atime, ctime = content.unpack('CVVV')
-      mtime && @mtime ||= ::Zip::DOSTime.at(mtime)
-      atime && @atime ||= ::Zip::DOSTime.at(atime)
-      ctime && @ctime ||= ::Zip::DOSTime.at(ctime)
+      mtime && @mtime ||= Cesium::IonExporter::Zip::DOSTime.at(mtime)
+      atime && @atime ||= Cesium::IonExporter::Zip::DOSTime.at(atime)
+      ctime && @ctime ||= Cesium::IonExporter::Zip::DOSTime.at(ctime)
     end
 
     def ==(other)
@@ -1361,7 +1373,7 @@ module Zip
     end
 
     def from_ntfs_time(ntfs_time)
-      ::Zip::DOSTime.at(ntfs_time / WINDOWS_TICK - SEC_TO_UNIX_EPOCH)
+      Cesium::IonExporter::Zip::DOSTime.at(ntfs_time / WINDOWS_TICK - SEC_TO_UNIX_EPOCH)
     end
 
     def to_ntfs_time(time)
@@ -1439,14 +1451,14 @@ module Zip
     protected
 
     def sorted_entries
-      ::Zip.sort_entries ? Hash[@entry_set.sort] : @entry_set
+      Cesium::IonExporter::Zip.sort_entries ? Hash[@entry_set.sort] : @entry_set
     end
 
     private
 
     def to_key(entry)
       k = entry.to_s.chomp('/')
-      k.downcase! if ::Zip.case_insensitive_match
+      k.downcase! if Cesium::IonExporter::Zip.case_insensitive_match
       k
     end
   end
@@ -1483,7 +1495,7 @@ module Zip
       @entry_set.each { |entry| entry.write_c_dir_entry(io) }
       eocd_offset = io.tell
       cdir_size = eocd_offset - cdir_offset
-      if ::Zip.write_zip64_support
+      if Cesium::IonExporter::Zip.write_zip64_support
         need_zip64_eocd = cdir_offset > 0xFFFFFFFF || cdir_size > 0xFFFFFFFF || @entry_set.size > 0xFFFF
         need_zip64_eocd ||= @entry_set.any? { |entry| entry.extra['Zip64'] }
         if need_zip64_eocd
@@ -1759,7 +1771,7 @@ module Zip
       # to the block and is automatically closed afterwards just as with
       # ruby's builtin File.open method.
       def open(file_name, create = false)
-        zf = ::Zip::File.new(file_name, create)
+        zf = Cesium::IonExporter::Zip::File.new(file_name, create)
         return zf unless block_given?
         begin
           yield zf
@@ -1771,7 +1783,7 @@ module Zip
       # Same as #open. But outputs data to a buffer instead of a file
       def add_buffer
         io = ::StringIO.new('')
-        zf = ::Zip::File.new(io, true, true)
+        zf = Cesium::IonExporter::Zip::File.new(io, true, true)
         yield zf
         zf.write_buffer(io)
       end
@@ -1785,13 +1797,12 @@ module Zip
           raise "Zip::File.open_buffer expects a String or IO-like argument (responds to #{IO_METHODS.join(', ')}). Found: #{io.class}"
         end
         if io.is_a?(::String)
-          require 'stringio'
           io = ::StringIO.new(io)
         elsif io.respond_to?(:binmode)
           # https://github.com/rubyzip/rubyzip/issues/119
           io.binmode
         end
-        zf = ::Zip::File.new(io, true, true, options)
+        zf = Cesium::IonExporter::Zip::File.new(io, true, true, options)
         zf.read_from_stream(io)
         return zf unless block_given?
         yield zf
@@ -1931,9 +1942,9 @@ module Zip
 
     # Convenience method for adding the contents of a file to the archive
     def add(entry, src_path, &continue_on_exists_proc)
-      continue_on_exists_proc ||= proc { ::Zip.continue_on_exists_proc }
+      continue_on_exists_proc ||= proc { Cesium::IonExporter::Zip.continue_on_exists_proc }
       check_entry_exists(entry, continue_on_exists_proc, 'add')
-      new_entry = entry.kind_of?(::Zip::Entry) ? entry : ::Zip::Entry.new(@name, entry.to_s)
+      new_entry = entry.kind_of?(Cesium::IonExporter::Zip::Entry) ? entry : Cesium::IonExporter::Zip::Entry.new(@name, entry.to_s)
       new_entry.gather_fileinfo_from_srcpath(src_path)
       new_entry.dirty = true
       @entry_set << new_entry
@@ -1973,7 +1984,7 @@ module Zip
     def commit
       return if name.is_a?(StringIO) || !commit_required?
       on_success_replace do |tmp_file|
-        ::Zip::OutputStream.open(tmp_file) do |zos|
+        Cesium::IonExporter::Zip::OutputStream.open(tmp_file) do |zos|
           @entry_set.each do |e|
             e.write_to_zip_output_stream(zos)
             e.dirty = false
@@ -1988,7 +1999,7 @@ module Zip
 
     # Write buffer write changes to buffer and return
     def write_buffer(io = ::StringIO.new(''))
-      ::Zip::OutputStream.write_buffer(io) do |zos|
+      Cesium::IonExporter::Zip::OutputStream.write_buffer(io) do |zos|
         @entry_set.each { |e| e.write_to_zip_output_stream(zos) }
         zos.comment = comment
       end
@@ -2035,7 +2046,7 @@ module Zip
       raise Errno::EEXIST, "File exists - #{entryName}" if find_entry(entryName)
       entryName = entryName.dup.to_s
       entryName << '/' unless entryName.end_with?('/')
-      @entry_set << ::Zip::StreamableDirectory.new(@name, entryName, nil, permissionInt)
+      @entry_set << Cesium::IonExporter::Zip::StreamableDirectory.new(@name, entryName, nil, permissionInt)
     end
 
     private
@@ -2058,7 +2069,7 @@ module Zip
       if continue_on_exists_proc.call
         remove get_entry(entryName)
       else
-        raise ::Zip::EntryExistsError,
+        raise Cesium::IonExporter::Zip::EntryExistsError,
               procedureName + " failed. Entry #{entryName} already exists"
       end
     end
@@ -2127,7 +2138,7 @@ module Zip
   # class.
 
   class InputStream
-    include ::Zip::IOExtras::AbstractInputStream
+    include Cesium::IonExporter::Zip::IOExtras::AbstractInputStream
 
     # Opens the indicated zip file. An exception is thrown
     # if the specified offset in the specified filename is
@@ -2138,8 +2149,8 @@ module Zip
     def initialize(context, offset = 0, decrypter = nil)
       super()
       @archive_io = get_io(context, offset)
-      @decompressor  = ::Zip::NullDecompressor
-      @decrypter     = decrypter || ::Zip::NullDecrypter.new
+      @decompressor  = Cesium::IonExporter::Zip::NullDecompressor
+      @decrypter     = decrypter || Cesium::IonExporter::Zip::NullDecrypter.new
       @current_entry = nil
     end
 
@@ -2211,7 +2222,7 @@ module Zip
     end
 
     def open_entry
-      @current_entry = ::Zip::Entry.read_local_entry(@archive_io)
+      @current_entry = Cesium::IonExporter::Zip::Entry.read_local_entry(@archive_io)
       if @current_entry && @current_entry.gp_flags & 1 == 1 && @decrypter.is_a?(NullEncrypter)
         raise Error, 'password required to decode zip file'
       end
@@ -2220,7 +2231,7 @@ module Zip
         && @current_entry.size == 0 && !@complete_entry
         raise GPFBit3Error,
               'General purpose flag Bit 3 is set so not possible to get proper info from local header.' \
-              'Please use ::Zip::File instead of ::Zip::InputStream'
+              'Please use Cesium::IonExporter::Zip::File instead of Cesium::IonExporter::Zip::InputStream'
       end
       @decompressor = get_decompressor
       flush
@@ -2229,19 +2240,19 @@ module Zip
 
     def get_decompressor
       if @current_entry.nil?
-        ::Zip::NullDecompressor
-      elsif @current_entry.compression_method == ::Zip::Entry::STORED
+        Cesium::IonExporter::Zip::NullDecompressor
+      elsif @current_entry.compression_method == Cesium::IonExporter::Zip::Entry::STORED
         if @current_entry.gp_flags & 8 == 8 && @current_entry.crc == 0 && @current_entry.size == 0 && @complete_entry
-          ::Zip::PassThruDecompressor.new(@archive_io, @complete_entry.size)
+          Cesium::IonExporter::Zip::PassThruDecompressor.new(@archive_io, @complete_entry.size)
         else
-          ::Zip::PassThruDecompressor.new(@archive_io, @current_entry.size)
+          Cesium::IonExporter::Zip::PassThruDecompressor.new(@archive_io, @current_entry.size)
         end
-      elsif @current_entry.compression_method == ::Zip::Entry::DEFLATED
+      elsif @current_entry.compression_method == Cesium::IonExporter::Zip::Entry::DEFLATED
         header = @archive_io.read(@decrypter.header_bytesize)
         @decrypter.reset!(header)
-        ::Zip::Inflater.new(@archive_io, @decrypter)
+        Cesium::IonExporter::Zip::Inflater.new(@archive_io, @decrypter)
       else
-        raise ::Zip::CompressionMethodError,
+        raise Cesium::IonExporter::Zip::CompressionMethodError,
               "Unsupported compression method #{@current_entry.compression_method}"
       end
     end
@@ -2279,7 +2290,7 @@ module Zip
   # class.
 
   class OutputStream
-    include ::Zip::IOExtras::AbstractOutputStream
+    include Cesium::IonExporter::Zip::IOExtras::AbstractOutputStream
 
     attr_accessor :comment
 
@@ -2296,9 +2307,9 @@ module Zip
                        else
                          ::File.new(@file_name, 'wb')
                        end
-      @entry_set = ::Zip::EntrySet.new
-      @compressor = ::Zip::NullCompressor.instance
-      @encrypter = encrypter || ::Zip::NullEncrypter.new
+      @entry_set = Cesium::IonExporter::Zip::EntrySet.new
+      @compressor = Cesium::IonExporter::Zip::NullCompressor.instance
+      @encrypter = encrypter || Cesium::IonExporter::Zip::NullEncrypter.new
       @closed = false
       @current_entry = nil
       @comment = nil
@@ -2373,7 +2384,7 @@ module Zip
       @compressor = NullCompressor.instance
       entry.get_raw_input_stream do |is|
         is.seek(src_pos, IO::SEEK_SET)
-        ::Zip::Entry.read_local_entry(is)
+        Cesium::IonExporter::Zip::Entry.read_local_entry(is)
         IOExtras.copy_stream_n(@output_stream, is, entry.compressed_size)
       end
       @compressor = NullCompressor.instance
@@ -2391,7 +2402,7 @@ module Zip
       @output_stream << @encrypter.data_descriptor(@current_entry.crc, @current_entry.compressed_size, @current_entry.size)
       @current_entry.gp_flags |= @encrypter.gp_flags
       @current_entry = nil
-      @compressor = ::Zip::NullCompressor.instance
+      @compressor = Cesium::IonExporter::Zip::NullCompressor.instance
     end
 
     def init_next_entry(entry, level = Zip.default_compression)
@@ -2406,11 +2417,11 @@ module Zip
     def get_compressor(entry, level)
       case entry.compression_method
       when Entry::DEFLATED then
-        ::Zip::Deflater.new(@output_stream, level, @encrypter)
+        Cesium::IonExporter::Zip::Deflater.new(@output_stream, level, @encrypter)
       when Entry::STORED then
-        ::Zip::PassThruCompressor.new(@output_stream)
+        Cesium::IonExporter::Zip::PassThruCompressor.new(@output_stream)
       else
-        raise ::Zip::CompressionMethodError,
+        raise Cesium::IonExporter::Zip::CompressionMethodError,
               "Invalid compression method: '#{entry.compression_method}'"
       end
     end
@@ -2514,8 +2525,8 @@ end
 # modify it under the terms of the ruby license.
 module Zip
   module NullInputStream #:nodoc:all
-    include ::Zip::NullDecompressor
-    include ::Zip::IOExtras::AbstractInputStream
+    include Cesium::IonExporter::Zip::NullDecompressor
+    include Cesium::IonExporter::Zip::IOExtras::AbstractInputStream
   end
 end
 
@@ -2570,7 +2581,7 @@ module Zip
     end
 
     def produce_input
-      sysread(::Zip::Decompressor::CHUNK_SIZE)
+      sysread(Cesium::IonExporter::Zip::Decompressor::CHUNK_SIZE)
     end
 
     def input_finished?
@@ -2882,7 +2893,7 @@ module Zip
 
     def write_to_zip_output_stream(aZipOutputStream)
       aZipOutputStream.put_next_entry(self)
-      get_input_stream { |is| ::Zip::IOExtras.copy_stream(aZipOutputStream, is) }
+      get_input_stream { |is| Cesium::IonExporter::Zip::IOExtras.copy_stream(aZipOutputStream, is) }
     end
 
     def clean_up
@@ -2989,16 +3000,9 @@ module Zip
   ZipEntryNameError = EntryNameError
   ZipInternalError = InternalError
 end
-require 'delegate'
-require 'singleton'
-require 'tempfile'
-require 'tmpdir'
-require 'fileutils'
-require 'stringio'
-require 'zlib'
+
 # KG-dev::RubyPacker replaced for zip/dos_time.rb
 # KG-dev::RubyPacker replaced for zip/ioextras.rb
-require 'rbconfig'
 # KG-dev::RubyPacker replaced for zip/entry.rb
 # KG-dev::RubyPacker replaced for zip/extra_field.rb
 # KG-dev::RubyPacker replaced for zip/entry_set.rb
@@ -3058,3 +3062,5 @@ end
 # Copyright (C) 2002, 2003 Thomas Sondergaard
 # rubyzip is free software; you can redistribute it and/or
 # modify it under the terms of the ruby license.
+
+end # Cesium::IonExporter
