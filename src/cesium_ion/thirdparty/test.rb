@@ -1,0 +1,1 @@
+require_relative 'aws-sdk-s3'
