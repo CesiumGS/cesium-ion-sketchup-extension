@@ -1,5 +1,5 @@
 source 'https://rubygems.org'
 
 group :development do
-  gem 'rubyzip'
+    gem 'rubyzip'
 end

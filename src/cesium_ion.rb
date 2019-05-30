@@ -3,15 +3,6 @@ require "extensions.rb"
 
 module Cesium
   module IonExporter
-    Gem.install 'aws-eventstream'
-    Gem.install 'aws-partitions'
-    Gem.install 'aws-sigv4'
-    Gem.install 'aws-sdk-core'
-    Gem.install 'aws-sdk-kms'
-    Gem.install 'aws-sdk-s3'
-    Gem.install 'jmespath'
-    Gem.install 'rubyzip'
-
     PLUGIN_ID = File.basename(__FILE__, ".rb")
     PLUGIN_DIR = File.join(File.dirname(__FILE__), PLUGIN_ID)
 
