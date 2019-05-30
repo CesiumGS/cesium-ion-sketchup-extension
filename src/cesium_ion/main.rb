@@ -1,3 +1,5 @@
+require 'base64'
+require 'digest'
 require 'json'
 require 'net/http'
 require 'socket'
@@ -58,12 +60,23 @@ module Cesium
       end
 
       state = [*('a'..'z'),*('0'..'9')].shuffle[0,8].join
+      codeVerifier = [*('a'..'z'),*('0'..'9')].shuffle[0,32].join
+
+      # Ruby only return a digest as a hex string, so convert that back to a binary string with pack
+      # Then base64 encode it and replace the non alpha-numeric characters
+      codeChallenge = Base64.encode64(Array(Digest::SHA256.hexdigest codeVerifier).pack('H*'))
+                        .gsub('+', '-')
+                        .gsub('/', '_')
+                        .gsub('=', '')
+                        .gsub("\n", '');
       query = {
         'client_id' => @@clientId,
         'scope' => 'assets:read%20assets:write',
         'state' => state,
         'response_type' => 'code',
-        'redirect_uri' => @@callbackUri
+        'redirect_uri' => @@callbackUri,
+        'code_challenge' => codeChallenge,
+        'code_challenge_method' => 'S256'
       }
 
       querystring = '';
@@ -157,7 +170,8 @@ module Cesium
         'client_id' => @@clientId,
         'code' => params['code'],
         'redirect_uri' => @@callbackUri,
-        'grant_type' => 'authorization_code'
+        'grant_type' => 'authorization_code',
+        'code_verifier' => codeVerifier
       }
       request.body = tokenOptions.to_json
       request['Content-Type'] = 'application/json'
