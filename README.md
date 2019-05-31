@@ -55,6 +55,10 @@ Once it is installed, you can `Publish` from the `Extensions`->`Cesium ion`->`Pu
 
 ## Release
 
+* Update the version in `cesium_ion.rb`
+* Tag the version and push it
+  * `git tag -a v1.x.x -m "Version 1.x.x"`
+  * `git push origin v1.x.x`
 * Go to the [Extension Warehouse](https://extensions.sketchup.com/en)
 * Select `My Extensions` from the dropdown on the right side
 * Click `Manage Store` on the left side
