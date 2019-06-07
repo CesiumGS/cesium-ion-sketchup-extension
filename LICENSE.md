@@ -205,4 +205,4 @@ Copyright 2019 Analytical Graphics Inc. and Contributors
 Third-Party Code
 ================
 
-For a list of third party libraries see <a href="ThirdParty.extra.json">here</a>
+For a list of third party libraries see <a href="ThirdParty.json">here</a>
