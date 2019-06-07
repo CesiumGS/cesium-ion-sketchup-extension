@@ -5,7 +5,7 @@ SketchUp extension for uploading and tiling models with Cesium ion.
 
 ### Sign up for a Cesium ion account
 
-Go to https://cesium.com/ion/ and create an account
+Go to https://cesium.com/ and create an account
 
 ### Install Ruby and required modules
 
