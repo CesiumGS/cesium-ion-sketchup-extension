@@ -13,7 +13,7 @@ See our official extension page https://extensions.sketchup.com/en/content/cesiu
 
 ### Sign up for a Cesium ion account
 
-Go to https://cesium.com/ion/ and create an account
+Go to https://cesium.com/ and create an account
 
 ### Install Ruby and required modules
 
