@@ -1,5 +1,9 @@
-# Cesium ion Sketchup Plugin
-SketchUp extension for uploading and tiling models with Cesium ion.
+# Cesium ion Sketchup Extension
+<p align="center">
+<a href="https://cesium.com/"><img src="https://github.com/AnalyticalGraphicsInc/cesium-ion-community/blob/master/ion_color_black.png" /></a>
+</p>
+
+A SketchUp extension for publishing SketchUp models as 3D Tiles to your Cesium ion account for use in CesiumJS and other applications.
 
 ## Installation and Usage
 
