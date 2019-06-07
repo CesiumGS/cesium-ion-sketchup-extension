@@ -1,0 +1,17 @@
+[
+    {
+      "name": "aws-sdk",
+      "url": "https://rubygems.org/gems/aws-sdk",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "jmespath",
+      "url": "https://rubygems.org/gems/jmespath",
+      "license": "Apache-2.0"
+    },
+    {
+      "name": "rubyzip",
+      "url": "https://rubygems.org/gems/rubyzip",
+      "license": "BSD-2-Clause"
+    }
+]
